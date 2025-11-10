@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedAssist AI - Medical Chatbot</title>
+    <link rel="stylesheet" href="static\style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="logo">
+                        <i class="fas fa-heart"></i>
+                    </div>
+                    <div class="header-info">
+                        <h1>MedAssist AI</h1>
+                        <p>Your Medical Information Assistant</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="badge">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>HIPAA Compliant</span>
+                    </div>
+                    <div class="badge">
+                        <i class="fas fa-clock"></i>
+                        <span>24/7 Available</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disclaimer Banner -->
+        <div class="disclaimer-banner">
+            <div class="disclaimer-content">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p><strong>Medical Disclaimer:</strong> This AI assistant provides information for educational purposes only. Always consult healthcare professionals for medical advice, diagnosis, or treatment.</p>
+            </div>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                <div class="message-avatar bot-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-bubble bot-bubble">
+                        <p>Hello! I'm your medical assistant. I can help answer your health-related questions using verified medical information. Please note that I'm not a replacement for professional medical advice. How can I assist you today?</p>
+                        <span class="message-time" id="initialTime"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="loading-message" id="loadingMessage" style="display: none;">
+            <div class="message-avatar bot-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="message-content">
+                <div class="message-bubble bot-bubble">
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                    <span class="typing-text">Analyzing medical information...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-area">
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="Ask me about symptoms, medications, conditions, or general health questions..."
+                        rows="1"
+                    ></textarea>
+                    <button id="sendButton" type="button">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                
+                <!-- Quick Suggestions -->
+                <div class="quick-suggestions">
+                    <button class="suggestion-btn" data-suggestion="What are the symptoms of flu?">
+                        What are the symptoms of flu?
+                    </button>
+                    <button class="suggestion-btn" data-suggestion="Tell me about diabetes management">
+                        Tell me about diabetes management
+                    </button>
+                    <button class="suggestion-btn" data-suggestion="Side effects of common medications">
+                        Side effects of common medications
+                    </button>
+                    <button class="suggestion-btn" data-suggestion="Healthy diet recommendations">
+                        Healthy diet recommendations
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        class MedicalChatbot {
+            constructor() {
+                this.messageInput = document.getElementById('messageInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.chatMessages = document.getElementById('chatMessages');
+                this.loadingMessage = document.getElementById('loadingMessage');
+                this.messageIdCounter = 1;
+                
+                this.initializeEventListeners();
+                this.setInitialTime();
+                this.autoResizeTextarea();
+            }
+
+            initializeEventListeners() {
+                this.sendButton.addEventListener('click', () => this.sendMessage());
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Quick suggestions
+                document.querySelectorAll('.suggestion-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.messageInput.value = e.target.getAttribute('data-suggestion');
+                        this.messageInput.focus();
+                    });
+                });
+
+                // Auto-resize textarea
+                this.messageInput.addEventListener('input', () => this.autoResizeTextarea());
+            }
+
+            setInitialTime() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                document.getElementById('initialTime').textContent = timeString;
+            }
+
+            autoResizeTextarea() {
+                this.messageInput.style.height = 'auto';
+                this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 120) + 'px';
+            }
+
+            async sendMessage() {
+                const message = this.messageInput.value.trim();
+                if (!message) return;
+
+                // Add user message
+                this.addUserMessage(message);
+                this.messageInput.value = '';
+                this.autoResizeTextarea();
+                
+                // Show loading
+                this.showLoading();
+                
+                try {
+                    console.log('Sending message:', message);
+                    
+                                      
+                    const response = await fetch("/chat", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            
+                        },
+                        body: JSON.stringify({ 
+                            message: message,
+                            timestamp: new Date().toISOString()
+                        })
+                    });
+
+                    console.log('Response status:', response.status); // Debug log
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Server error:', errorText);
+                        throw new Error(`Server responded with ${response.status}: ${errorText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('Response data:', data); // Debug log
+                    
+                    this.hideLoading();
+                    this.addBotMessage(data.response || data.message || "I received your message but couldn't generate a proper response.");
+                    
+                } catch (error) {
+                    console.error('Full error details:', error);
+                    this.hideLoading();
+                    
+                    let errorMessage = "I apologize, but I'm having trouble connecting to the server. ";
+                    
+                    if (error.message.includes('404')) {
+                        errorMessage += "The chat endpoint was not found. Please check your backend routes.";
+                    } else if (error.message.includes('500')) {
+                        errorMessage += "There's a server error. Please check the backend logs.";
+                    } else if (error.message.includes('Failed to fetch')) {
+                        errorMessage += "Cannot connect to the server. Is your backend running?";
+                    } else {
+                        errorMessage += "Please try again in a moment.";
+                    }
+                    
+                    this.addBotMessage(errorMessage);
+                }
+            }
+
+            addUserMessage(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message user-message';
+                messageDiv.innerHTML = `
+                    <div class="message-content">
+                        <div class="message-bubble user-bubble">
+                            <p>${this.escapeHtml(message)}</p>
+                            <span class="message-time">${this.getCurrentTime()}</span>
+                        </div>
+                    </div>
+                    <div class="message-avatar user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                `;
+                this.chatMessages.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            addBotMessage(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message bot-message';
+                messageDiv.innerHTML = `
+                    <div class="message-avatar bot-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-bubble bot-bubble">
+                            <p>${this.escapeHtml(message)}</p>
+                            <span class="message-time">${this.getCurrentTime()}</span>
+                        </div>
+                    </div>
+                `;
+                this.chatMessages.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            showLoading() {
+                this.loadingMessage.style.display = 'flex';
+                this.scrollToBottom();
+            }
+
+            hideLoading() {
+                this.loadingMessage.style.display = 'none';
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+                }, 100);
+            }
+
+            getCurrentTime() {
+                return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // For Django CSRF protection
+            getCSRFToken() {
+                return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                       document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            }
+        }
+
+        // Initialize chatbot when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new MedicalChatbot();
+        });
+    </script>
+</body>
+</html>
